@@ -2029,6 +2029,29 @@ bool  FWT::fwtReadFile(wchar_t *name, char *appdir)
 ////////////////////////CLASS ANN/////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 
+/* Annotation codes are mostly Physionet codes, detailed at: 
+   http://www.physionet.org/physiotools/wpg/wpg_32.htm#Annotation-Codes
+Michael Shipway (7/9/2012)
+
+    16 - ARFCT - Isolated QRS-like artifact
+    15 - q -  Peak of Q-wave where the absolute value is less than 0.5
+    17 - Q -  Peak of Q-wave where the absolute value is GREATER than 0.5
+    24 - P -  Peak of P-wave
+    27 - T -  Peak of T-wave
+    39, 40 - '(' QRS ')'  PQ, J point
+    42 - (p - Pwave onset
+    43 - p) - Pwave offset
+    44 - (t - Twave onset
+    45 - t) - Twave offset
+    46 - ect - Ectopic of any origin beat
+    47 - r -  Peak of R-wave where the absolute value is less than 0.5
+    48 - R -  Peak of R-wave where the absolute value is GREATER than 0.5
+    49 - s -  Peak of S-wave where the absolute value is less than 0.5
+    50 - S -  Peak of S-wave where the absolute value is GREATER than 0.5
+	51 - (r - (Qwave offset) Rwave onset
+	52 - r) - Rwave offset (Swave onset)
+    */
+
 Annotation::Annotation(PANNHDR p): qrsNum(0),annNum(0),auxNum(0),ectNum(0),
                                    ANN(0),qrsANN(0),AUX(0)
 {
@@ -3191,6 +3214,7 @@ bool Annotation::SaveQTseq(wchar_t *name, int **ann, int annsize, long double sr
      return false;
 }
 
+// returns vector (QT) of QT intervals in Seconds.
 bool Annotation::GetQTseq(int **ann, int nums, long double sr, vector<long double> *QT, vector<int> *QTpos)
 {
    int add=-1;
@@ -3209,7 +3233,6 @@ bool Annotation::GetQTseq(int **ann, int nums, long double sr, vector<long doubl
    }
    if(int(1.2f*(float)qNum) < tNum)
      qts=false;  //Q peaks less than T ones
-
 
      for(int i=0; i<nums; i++)
      {
