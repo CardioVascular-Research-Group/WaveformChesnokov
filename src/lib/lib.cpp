@@ -77,7 +77,7 @@ Signal::~Signal()
 
 //----------------------------------------------------------------------------
 /** Populates the Signal structure from the specified record.
- * name - name of a file(record) to be found in the WFDB path, (or the current directory?)
+ * name - name of a file(record) to be found in the WFDB path e.g. "/opt/wfdb-/database", (or the current directory?)
  */
 long double * Signal::PopulateSignal(char *name)
 {
@@ -543,6 +543,7 @@ bool Signal::ReadMit()
 }
  */
 
+/** Populate the Signal instance with the meta data and data for the specified lead/index/column **/
 int Signal::GetData(int index)
 {
 	if(!vdata.size()) return 0;
@@ -1284,7 +1285,8 @@ float * CWT::CWTReadFile(wchar_t *name)
 	return (lpf+sizeof(CWTHDR)/sizeof(float));
 }*/
 //----------------------------------------------------------------------------
-long double  CWT::HzToScale(long double f, long double sr, int index, long double w)
+//long double  CWT::HzToScale(long double f, long double sr, int index, long double w)
+long double  CWT::HzToScale(long double f, double sr, int index, long double w)
 {
 	long double k;
 
@@ -1396,7 +1398,8 @@ void  CWT::ConvertName(wchar_t *name, int index, long double w)
 }
 
 //----------------------------------------------------------------------------
-void  CWT::InitCWT(int sz, int index, long double w, long double sr)
+//void  CWT::InitCWT(int sz, int index, long double w, long double sr)
+void  CWT::InitCWT(int sz, int index, long double w, double sr)
 {
 	cwtSize = sz;
 
@@ -2226,7 +2229,7 @@ Annotation::~Annotation()
 // create qrsANN array   with qrsNum records  num of heart beats = qrsNum/2
 //
 //int ** Annotation::GetQRS(long double *mass, int len, long double sr, wchar_t *fltdir, int stype)
-int ** Annotation::GetQRS(long double *mass, int len, long double sr, char *fltdir, int stype)
+int ** Annotation::GetQRS(long double *mass, int len, double sr, char *fltdir, int stype)
 {
 
 	long double *pmass = (long double *)malloc(len*sizeof(long double));
@@ -2382,7 +2385,7 @@ bool Annotation::chkNoise(long double *mass, int window)
 }
 
 //bool Annotation::flt30Hz(long double *mass, int len, long double sr, wchar_t *fltdir, int stype)
-bool Annotation::flt30Hz(long double *mass, int len, long double sr, char *fltdir, int stype)
+bool Annotation::flt30Hz(long double *mass, int len, double sr, char *fltdir, int stype)
 {
 
 	CWT cwt;
@@ -2464,7 +2467,7 @@ bool Annotation::flt30Hz(long double *mass, int len, long double sr, char *fltdi
 
 ////////////////////////////////////////////////////////////////////////////////
 // find ectopic beats in HRV data
-void Annotation::GetECT(int **ann, int qrsnum, long double sr)
+void Annotation::GetECT(int **ann, int qrsnum, double sr)
 {
 	if(qrsnum < 3)
 		return;
@@ -2534,7 +2537,7 @@ void Annotation::GetECT(int **ann, int qrsnum, long double sr)
 //out united annotation with QRS PT////////////////////////////////////////////
 // **ann [PQ,JP] pairs
 //int ** Annotation::GetPTU(long double *mass, int len, long double sr, wchar_t *fltdir, int **ann, int qrsnum)
-int ** Annotation::GetPTU(long double *mass, int len, long double sr, char *fltdir, int **ann, int qrsnum)
+int ** Annotation::GetPTU(long double *mass, int len, double sr, char *fltdir, int **ann, int qrsnum)
 {
 	int size, annPos;
 	int T1=-1,T=-1,T2=-1, Twaves=0;
@@ -3360,8 +3363,8 @@ bool Annotation::SaveQTseq(char *name, int **ann, int annsize, long double sr, i
 	else
 		return false;
 }
-
-bool Annotation::GetQTseq(int **ann, int nums, long double sr, vector<long double> *QT, vector<int> *QTpos)
+//bool Annotation::GetQTseq(int **ann, int nums, long double sr, vector<long double> *QT, vector<int> *QTpos)
+bool Annotation::GetQTseq(int **ann, int nums, double sr, vector<long double> *QT, vector<int> *QTpos)
 {
 	int add=-1;
 	long double qt, q, t;
@@ -3555,7 +3558,8 @@ bool Annotation::SavePPseq(char *name, int **ann, int annsize, long double sr, i
 		return false;
 }
 
-bool Annotation::GetRRseq(int **ann, int nums, long double sr, vector<long double> *RR, vector<int> *RRpos)
+//bool Annotation::GetRRseq(int **ann, int nums, long double sr, vector<long double> *RR, vector<int> *RRpos)
+bool Annotation::GetRRseq(int **ann, int nums, double sr, vector<long double> *RR, vector<int> *RRpos)
 {
 	int add=-1;
 	long double rr; // instantaneous Heart Rate in Beats per Minute.
@@ -3995,7 +3999,7 @@ ECGDenoise::~ECGDenoise()
 
 
 //void ECGDenoise::InitDenoise(wchar_t *fltdir, long double *data, int size, long double sr, bool mirror)
-void ECGDenoise::InitDenoise(char *fltdir, long double *data, int size, long double sr, bool mirror)
+void ECGDenoise::InitDenoise(char *fltdir, long double *data, int size, double sr, bool mirror)
 {
 //	wcscpy(this->fltdir, fltdir);
 	strcpy(this->fltdir, fltdir);

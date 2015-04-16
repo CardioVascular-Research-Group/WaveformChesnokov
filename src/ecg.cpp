@@ -17,7 +17,7 @@ class Signal signal;
 
 int main(int argc, char* argv[])
 {
-	cout << "ecg main() argv[]:" << argv[1] << ","<< argv[2] << ","<< argv[3] << "\n"; // prints !!!Hello World!!!
+	cout << "ecg main() argv[]:" << argv[1] << ","<< argv[2] << ","<< argv[3] << "\n";
 //***********************************************************
 
     //add your code here
@@ -47,9 +47,14 @@ int runChesnokov(char *fltdir, char *physionetdatfile, char *outputfilepath, int
         if( signal.GetLeadsNum() != 0){ // pretending that the WFDB input file was read... // !signal.ReadFile( physionetdatfile )
 
         	//char *fltdir = argv[1];
+//			FILE *fp_output = fopen( outputfilepath, "wt" );
+        	cout << "** Open outputfile: " << outputfilepath <<" **\n";
 			FILE *fp_output = fopen( outputfilepath, "wt" );
             int size = signal.GetLength();
-            long double sr = signal.GetSR();
+//            long double sr = signal.GetSR();
+		    cout << "** GetSR() **\n";
+
+            double sr = signal.GetSR();
             int h,m,s,ms;
             int msec = int( ((long double)size/sr) * 1000.0 );
             signal.mSecToTime(msec,h,m,s,ms);
@@ -57,23 +62,41 @@ int runChesnokov(char *fltdir, char *physionetdatfile, char *outputfilepath, int
 		    wchar_t leads[18][6] =  {L"I",L"II",L"III",L"aVR",L"aVL",L"aVF",L"v1",L"v2",L"v3",L"v4",L"v5",L"v6",L"MLI",L"MLII",L"MLIII",L"vX",L"vY",L"vZ"};
 			//wchar_t lead[6] = L" ";
 
+		    cout << "** Writing XML header ** " << fp_output <<" **\n";
 			fwprintf( fp_output,L"<?xml version = \"1.0\" encoding = \"UTF-8\"?>\n");
+			cout << "** Writing XML header **\n";
 			fwprintf( fp_output,L"<autoQRSResults xmlns=\"http://www.cvrg.org/1/AutoQRSService\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://www.cvrg.org/1/AutoQRSService\">\n");
+			cout << "** Writing XML header **\n";
 			fwprintf( fp_output,L"\t<jobIdentifier/>\n");
+
+			cout << "** Writing physionetdatfile **\n";
 			fwprintf( fp_output,L"\t<FileAnalyzed>%s</FileAnalyzed>\n", physionetdatfile);
+			cout << "** Writing signal.GetLeadsNum() **\n";
             fwprintf( fp_output,L"\t<LeadCount>%d</LeadCount>\n", signal.GetLeadsNum() );
-            fwprintf( fp_output,L"\t<SR>%.2Lf</SR>\n", sr );
+            cout << "** Writing sr **\n";
+            fwprintf( fp_output,L"\t<SR>%.2f</SR>\n", sr );
+            cout << "** Writing signal.GetUmV() **\n";
             fwprintf( fp_output,L"\t<UmV>%d</UmV>\n", signal.GetUmV() );
+            cout << "** Writing  h,m,s,ms **\n";
             fwprintf( fp_output,L"\t<Length>%02d:%02d:%02d.%03d</Length>\n", h,m,s,ms );
+            cout << "** Finished XML header **\n";
 
 			for( leadNumber = 0; leadNumber < signal.GetLeadsNum(); leadNumber++) {
-				fwprintf( fp_output,L"\t<LeadResults id=\"%d\">\n", leadNumber + 1 );
+				cout << "** Get signal data for lead:" << leadNumber << " **\n";
 				signal.GetData( leadNumber );
-				wprintf( L"\n\tlead: %ls\n", leads[leadNumber] );
-	            wprintf( L"\tsamplingRate: %.2Lf\n", sr );
-	            wprintf( L"\tbits: %d\n", signal.GetBits() );
-				wprintf( L"\tumv: %d\n", signal.GetUmV() );
-				wprintf( L"\tsize: %d\n", size );
+				fwprintf( fp_output,L"\t<LeadResults id=\"%d\">\n", leadNumber + 1 );
+
+/*				cout << "\n\tlead: " << *leads[leadNumber] << "\n";
+				cout << "\tsamplingRate:  " << sr << "\n";
+				cout << "\tbits: " << signal.GetBits() << "\n";
+				cout << "\tumv: " << signal.GetUmV() << "\n";
+				cout << "\tsize: " << size << "\n";
+*/
+//				wprintf( L"\n\tlead: %ls\n", leads[leadNumber] );
+//	            wprintf( L"\tsamplingRate: %.2Lf\n", sr );
+//	            wprintf( L"\tbits: %d\n", signal.GetBits() );
+//				wprintf( L"\tumv: %d\n", signal.GetUmV() );
+//				wprintf( L"\tsize: %d\n", size );
 				long double* data = signal.GetData();
 	            
 				//annotation
@@ -96,6 +119,7 @@ int runChesnokov(char *fltdir, char *physionetdatfile, char *outputfilepath, int
 					fwprintf( fp_output,L"\t\t<TotalBeatCount>%d</TotalBeatCount>\n", ann.GetQRSnum() );
 					ann.GetECT( qrsAnn, ann.GetQRSnum(), sr );      //label Ectopic beats
 					fwprintf( fp_output,L"\t\t<EctopicBeatCount>%d</EctopicBeatCount>\n", ann.GetECTnum() );
+					cout << "\tgetting P, T waves... \n";
 					wprintf( L"\tgetting P, T waves... \n" );
 					int annNum = 0;
 					int** ANN = ann.GetPTU( data, size, sr, fltdir, qrsAnn, ann.GetQRSnum() );   //find P,T waves
@@ -137,11 +161,16 @@ int runChesnokov(char *fltdir, char *physionetdatfile, char *outputfilepath, int
 					vector<int> rrsPos;
 					vector<long double> qts;
 					vector<int> qtsPos;
-					long double meanRR = 0.0, meanQT = 0.0, QTc = 0.0;
-					long double minQT = 10000000000.0, maxQT = 0.0, minRR = 10000000000.0, maxRR = 0.0;
-					long double minHR = 10000000000.0, maxHR = 0.0;
-					long double varRR = 0.0, sdRR = 0.0, varQT = 0.0, sdQT = 0.0;
-					long double meanHR = 0.0, sdHR = 0.0, varHR = 0.0;
+//					long double meanRR = 0.0, meanQT = 0.0, QTc = 0.0;
+//					long double minQT = 10000000000.0, maxQT = 0.0, minRR = 10000000000.0, maxRR = 0.0;
+//					long double minHR = 10000000000.0, maxHR = 0.0;
+//					long double varRR = 0.0, sdRR = 0.0, varQT = 0.0, sdQT = 0.0;
+//					long double meanHR = 0.0, sdHR = 0.0, varHR = 0.0;
+					double meanRR = 0.0, meanQT = 0.0, QTc = 0.0;
+					double minQT = 10000000000.0, maxQT = 0.0, minRR = 10000000000.0, maxRR = 0.0;
+					double minHR = 10000000000.0, maxHR = 0.0;
+					double varRR = 0.0, sdRR = 0.0, varQT = 0.0, sdQT = 0.0;
+					double meanHR = 0.0, sdHR = 0.0, varHR = 0.0;
 					//double dNaN = std::numeric_limits<double>::quiet_NaN();
 
 					if( ann.GetRRseq( ANN, annNum, sr, &rrs, &rrsPos) ) {
@@ -194,9 +223,12 @@ int runChesnokov(char *fltdir, char *physionetdatfile, char *outputfilepath, int
 						fwprintf( fp_output,L"\t\t<QTVI_log>NaN</QTVI_log>\n");
 						fwprintf( fp_output,L"\t\t<QT_Dispersion>NaN</QT_Dispersion>\n");
 					} else {
-						fwprintf( fp_output,L"\t\t<QTCorrected_Bazett>%.5Lf</QTCorrected_Bazett>\n", meanQT/sqrt(meanRR) );
-						fwprintf( fp_output,L"\t\t<QTVI_log>%.5Lf</QTVI_log>\n", log((varQT/(meanQT*meanQT))/(varHR/(meanHR*meanHR))) );
-						fwprintf( fp_output,L"\t\t<QT_Dispersion>%.5Lf</QT_Dispersion>\n", maxQT-minQT );
+//						fwprintf( fp_output,L"\t\t<QTCorrected_Bazett>%.5Lf</QTCorrected_Bazett>\n", meanQT/sqrt(meanRR) );
+//						fwprintf( fp_output,L"\t\t<QTVI_log>%.5Lf</QTVI_log>\n", log((varQT/(meanQT*meanQT))/(varHR/(meanHR*meanHR))) );
+//						fwprintf( fp_output,L"\t\t<QT_Dispersion>%.5Lf</QT_Dispersion>\n", maxQT-minQT );
+						fwprintf( fp_output,L"\t\t<QTCorrected_Bazett>%.5f</QTCorrected_Bazett>\n", (double)meanQT/sqrt(meanRR) );
+						fwprintf( fp_output,L"\t\t<QTVI_log>%.5f</QTVI_log>\n", log((varQT/(meanQT*meanQT))/(varHR/(meanHR*meanHR))) );
+						fwprintf( fp_output,L"\t\t<QT_Dispersion>%.5f</QT_Dispersion>\n", maxQT-minQT );
 					}
 					fwprintf( fp_output,L"\t\t<RRIntervalResults>\n");
 					fwprintf( fp_output,L"\t\t\t<RRIntervalCount>%d</RRIntervalCount>\n", (int)rrs.size() );
@@ -207,11 +239,16 @@ int runChesnokov(char *fltdir, char *physionetdatfile, char *outputfilepath, int
 						fwprintf( fp_output,L"\t\t\t<RRVariance>NaN</RRVariance>\n");
 						fwprintf( fp_output,L"\t\t\t<RRStandardDeviation>NaN</RRStandardDeviation>\n");
 					} else {
-						fwprintf( fp_output,L"\t\t\t<RRMean>%.5Lf</RRMean>\n", meanRR );
-						fwprintf( fp_output,L"\t\t\t<RRMin>%.5Lf</RRMin>\n", minRR );
-						fwprintf( fp_output,L"\t\t\t<RRMax>%.5Lf</RRMax>\n", maxRR );
-						fwprintf( fp_output,L"\t\t\t<RRVariance>%.5Lf</RRVariance>\n", varRR );
-						fwprintf( fp_output,L"\t\t\t<RRStandardDeviation>%.5Lf</RRStandardDeviation>\n", sdRR );
+//						fwprintf( fp_output,L"\t\t\t<RRMean>%.5Lf</RRMean>\n", meanRR );
+//						fwprintf( fp_output,L"\t\t\t<RRMin>%.5Lf</RRMin>\n", minRR );
+//						fwprintf( fp_output,L"\t\t\t<RRMax>%.5Lf</RRMax>\n", maxRR );
+//						fwprintf( fp_output,L"\t\t\t<RRVariance>%.5Lf</RRVariance>\n", varRR );
+//						fwprintf( fp_output,L"\t\t\t<RRStandardDeviation>%.5Lf</RRStandardDeviation>\n", sdRR );
+						fwprintf( fp_output,L"\t\t\t<RRMean>%.5f</RRMean>\n", meanRR );
+						fwprintf( fp_output,L"\t\t\t<RRMin>%.5f</RRMin>\n", minRR );
+						fwprintf( fp_output,L"\t\t\t<RRMax>%.5f</RRMax>\n", maxRR );
+						fwprintf( fp_output,L"\t\t\t<RRVariance>%.5f</RRVariance>\n", varRR );
+						fwprintf( fp_output,L"\t\t\t<RRStandardDeviation>%.5f</RRStandardDeviation>\n", sdRR );
 					}
 					fwprintf( fp_output,L"\t\t</RRIntervalResults>\n");
 					fwprintf( fp_output,L"\t\t<QTIntervalResults>\n");
@@ -223,11 +260,16 @@ int runChesnokov(char *fltdir, char *physionetdatfile, char *outputfilepath, int
 						fwprintf( fp_output,L"\t\t\t<QTVariance>NaN</QTVariance>\n");
 						fwprintf( fp_output,L"\t\t\t<QTStandardDeviation>NaN</QTStandardDeviation>\n");
 					} else {
-						fwprintf( fp_output,L"\t\t\t<QTMean>%.5Lf</QTMean>\n", meanQT );
-						fwprintf( fp_output,L"\t\t\t<QTMin>%.5Lf</QTMin>\n", minQT );
-						fwprintf( fp_output,L"\t\t\t<QTMax>%.5Lf</QTMax>\n", maxQT );
-						fwprintf( fp_output,L"\t\t\t<QTVariance>%.5Lf</QTVariance>\n", varQT );
-						fwprintf( fp_output,L"\t\t\t<QTStandardDeviation>%.5Lf</QTStandardDeviation>\n", sdQT );
+//						fwprintf( fp_output,L"\t\t\t<QTMean>%.5Lf</QTMean>\n", meanQT );
+//						fwprintf( fp_output,L"\t\t\t<QTMin>%.5Lf</QTMin>\n", minQT );
+//						fwprintf( fp_output,L"\t\t\t<QTMax>%.5Lf</QTMax>\n", maxQT );
+//						fwprintf( fp_output,L"\t\t\t<QTVariance>%.5Lf</QTVariance>\n", varQT );
+//						fwprintf( fp_output,L"\t\t\t<QTStandardDeviation>%.5Lf</QTStandardDeviation>\n", sdQT );
+						fwprintf( fp_output,L"\t\t\t<QTMean>%.5f</QTMean>\n", meanQT );
+						fwprintf( fp_output,L"\t\t\t<QTMin>%.5f</QTMin>\n", minQT );
+						fwprintf( fp_output,L"\t\t\t<QTMax>%.5f</QTMax>\n", maxQT );
+						fwprintf( fp_output,L"\t\t\t<QTVariance>%.5f</QTVariance>\n", varQT );
+						fwprintf( fp_output,L"\t\t\t<QTStandardDeviation>%.5f</QTStandardDeviation>\n", sdQT );
 					}
 					fwprintf( fp_output,L"\t\t</QTIntervalResults>\n");
 					fwprintf( fp_output,L"\t</LeadResults>\n");

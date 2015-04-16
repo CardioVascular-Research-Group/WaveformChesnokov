@@ -54,6 +54,7 @@ class Signal
    PDATAHDR phdr;                   //data header
 
    vector<DATAHDR> hdrs;           //arrays of headers
+//   vector<long double *> vdata;     //arrays of signals
    vector<long double *> vdata;     //arrays of signals
 
     bool dat;                       //bin/txt file
@@ -75,7 +76,8 @@ class Signal
 
   protected:
     long double *data;
-    long double SR; // Sampling Rate/frequency (in samples per second per signal)
+//    long double SR; // Sampling Rate/frequency (in samples per second per signal)
+    double SR; // Sampling Rate/frequency (in samples per second per signal)
     int Lead; // Lead number that GetData() currently represents.
     int UmV; //  ADC gain (ADC units per physical unit)
     int Bits; //ADC resolution (bits)
@@ -205,7 +207,7 @@ typedef struct _cwthdr
    float fmax;
    float fstep;
    unsigned int size;
-   float sr;
+   double sr;
    unsigned char type;   //1-log; 0-norm scale
 
    char rsrv[15];
@@ -236,10 +238,12 @@ class CWT : public Signal
 
         float * CWTCreateFileHeader(wchar_t *, PCWTHDR, int, long double);
         float * CWTReadFile(wchar_t *);
-  long double   HzToScale(long double, long double, int, long double w=5);
+//  long double   HzToScale(long double, long double, int, long double w=5);
+  long double   HzToScale(long double, double, int, long double w=5);
          void   ConvertName(wchar_t *, int, long double);
 
-          void  InitCWT(int, int, long double w=5, long double sr=0);
+//          void  InitCWT(int, int, long double w=5, long double sr=0);
+          void  InitCWT(int, int, long double w=5, double sr=0);
           void  CloseCWT();
   long double * CWTrans(long double *buff, long double freq, bool mr=true, long double lv=0, long double rv=0);
 
@@ -364,7 +368,7 @@ typedef struct _annhdr
    int minbpm;
    int maxbpm;
    long double minUmV;  //min R,S amplitude
-   long double minQRS;  //min QRS duration  
+   long double minQRS;  //min QRS duration
    long double maxQRS;  //max QRS duration
    long double minPQ;
    long double maxPQ;
@@ -387,13 +391,14 @@ class Annotation : public Signal
 
     bool chkNoise(long double *mass, int window);        //check for noise in window len
 //    bool flt30Hz(long double *mass, int len, long double sr, wchar_t *fltdir, int stype);    //0-30Hz removal
-    bool flt30Hz(long double *mass, int len, long double sr, char *fltdir, int stype);    //0-30Hz removal
+//    bool flt30Hz(long double *mass, int len, long double sr, char *fltdir, int stype);    //0-30Hz removal
+    bool flt30Hz(long double *mass, int len, double sr, char *fltdir, int stype);    //0-30Hz removal
 
-     void findRS(long double *mass, int len, int &R, int &S, long double err=0.0);  //find RS or QR  
+     void findRS(long double *mass, int len, int &R, int &S, long double err=0.0);  //find RS or QR
      int findr(long double *mass, int len, long double err=0.0);  //find small r in PQ-S
      int findq(long double *mass, int len, long double err=0.0);  //find small q in PQ-R
      int finds(long double *mass, int len, long double err=0.0);  //find small s in R-Jpnt
-     int findTmax(long double *mass, int len); 
+     int findTmax(long double *mass, int len);
 
 
    public:
@@ -402,10 +407,11 @@ class Annotation : public Signal
 
 
 //   int **GetQRS(long double *mass, int len, long double sr, wchar_t *fltdir=0, int stype=qNORM);     //get RR's classification
-   int **GetQRS(long double *mass, int len, long double sr, char *fltdir=0, int stype=qNORM);     //get RR's classification
-    void GetECT(int **ann, int qrsnum, long double sr);                                              //classify ectopic beats
+   int **GetQRS(long double *mass, int len, double sr, char *fltdir=0, int stype=qNORM);     //get RR's classification
+//    void GetECT(int **ann, int qrsnum, long double sr);                                              //classify ectopic beats
+    void GetECT(int **ann, int qrsnum, double sr);                                              //classify ectopic beats
 //   int **GetPTU(long double *mass, int len, long double sr, wchar_t *fltdir, int **ann, int qrsnum);
-   int **GetPTU(long double *mass, int len, long double sr, char *fltdir, int **ann, int qrsnum);
+   int **GetPTU(long double *mass, int len, double sr, char *fltdir, int **ann, int qrsnum);
      int GetQRSnum(){ return qrsNum; };
      int GetANNnum(){ return annNum; };
      int GetECTnum(){ return ectNum; };
@@ -422,8 +428,10 @@ class Annotation : public Signal
 
      PANNHDR GetANNhdr(){return &ahdr;}; 
 
-     bool GetRRseq(int **ann, int nums, long double sr, vector<long double> *RR, vector<int> *RRpos);
-     bool GetQTseq(int **ann, int nums, long double sr, vector<long double> *QT, vector<int> *QTpos);
+//     bool GetRRseq(int **ann, int nums, long double sr, vector<long double> *RR, vector<int> *RRpos);
+     bool GetRRseq(int **ann, int nums, double sr, vector<long double> *RR, vector<int> *RRpos);
+//     bool GetQTseq(int **ann, int nums, long double sr, vector<long double> *QT, vector<int> *QTpos);
+     bool GetQTseq(int **ann, int nums, double sr, vector<long double> *QT, vector<int> *QTpos);
     // bool SaveRRseq(wchar_t *, int **, int, long double, int);
     // bool SaveRRnseq(wchar_t *, int **, int, long double, int);
 //     bool SaveQTseq(wchar_t *, int **, int, long double, int);
@@ -520,7 +528,8 @@ class ECGDenoise : public FWT
        ~ECGDenoise();
 
 //       void  InitDenoise(wchar_t *fltdir, long double *data, int size, long double sr, bool mirror=true);
-       void  InitDenoise(char *fltdir, long double *data, int size, long double sr, bool mirror=true);
+//       void  InitDenoise(char *fltdir, long double *data, int size, long double sr, bool mirror=true);
+       void  InitDenoise(char *fltdir, long double *data, int size, double sr, bool mirror=true);
        void  CloseDenoise();
 
        bool LFDenoise();         //baseline wander removal
