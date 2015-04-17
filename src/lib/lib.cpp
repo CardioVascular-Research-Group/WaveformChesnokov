@@ -78,17 +78,19 @@ Signal::~Signal()
 //----------------------------------------------------------------------------
 /** Populates the Signal structure from the specified record.
  * name - name of a file(record) to be found in the WFDB path e.g. "/opt/wfdb-/database", (or the current directory?)
+ * returns sample count;
  */
-long double * Signal::PopulateSignal(char *name)
+int  Signal::PopulateSignal(char *name)
 {
 	/* WFDB sample where signal count is not known */
-	int sample, sig, nsig;
+	int sample=0;
+	int sig, nsig;
 	WFDB_Sample *samparray; //a signed integer type (at least 16 bits) used to represent sample values, in units of adus.
 	WFDB_Siginfo *siarray; // an object containing the name and global attributes of a given signal.
 	WFDB_Frequency freq;//* units are Hz (samples/second/signal) */
 	DATAHDR *pDataheader = (DATAHDR *)malloc(sizeof(DATAHDR));
 
-	nsig = isigopen(name, NULL, 0);
+	nsig = isigopen(name, NULL, 0); //nsig >0 = Success: the returned value is the number of input signals (i.e., the number of valid entries in siarray)
 	if (nsig < 1)
 		exit(1);
 	//hdrs = (DATAHDR *)malloc(nsig * sizeof(DATAHDR));
@@ -159,17 +161,17 @@ long double * Signal::PopulateSignal(char *name)
 	}
 
 	//	 Print first 5 samples
-	for (sample = 0; sample < 5; sample++) {
-		printf("%d ms\t",sample*(1000/(int)freq) );
+	for (int s = 0; s < 5; s++) {
+		printf("%d ms\t",s*(1000/(int)freq) );
 		for (sig = 0; sig < nsig; sig++){
-			WFDB_Sample dum = vdata[sig][sample];
+			WFDB_Sample dum = vdata[sig][s];
 			printf("%d\t", dum );
 		}
 		printf("\n");
 	}
 	wfdbquit();
 
-
+	return sample;
 }
 
 
