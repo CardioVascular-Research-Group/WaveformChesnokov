@@ -82,6 +82,7 @@ Signal::~Signal()
  */
 int  Signal::PopulateSignal(char *name)
 {
+	printf("PopulateSignal(%s)\n", name);
 	/* WFDB sample where signal count is not known */
 	int sample=0;
 	int sig, nsig;

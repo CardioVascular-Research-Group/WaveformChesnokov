@@ -25,8 +25,6 @@
 								<option id="gnu.cpp.compiler.exe.debug.option.debugging.level.506130302" name="Debug Level" superClass="gnu.cpp.compiler.exe.debug.option.debugging.level" value="gnu.cpp.compiler.debugging.level.default" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.include.paths.1366456523" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="/opt/wfdb/include"/>
-									<listOptionValue builtIn="false" value="/home/WIN/mshipwa1/workspaceHelloCPP/HelloC4/lib"/>
-									<listOptionValue builtIn="false" value="/home/WIN/mshipwa1/workspaceHelloCPP/HelloC4/src"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.debugging.gprof.1249444859" name="Generate gprof information (-pg)" superClass="gnu.cpp.compiler.option.debugging.gprof" value="true" valueType="boolean"/>
 								<option id="gnu.cpp.compiler.option.debugging.prof.1796285391" name="Generate prof information (-p)" superClass="gnu.cpp.compiler.option.debugging.prof" value="true" valueType="boolean"/>
