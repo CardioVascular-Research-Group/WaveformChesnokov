@@ -7,7 +7,7 @@
 //============================================================================
 
 
-#include "stdafx.h"
+#include "lib/stdafx.h"
 //#include "lib/lib.h"
 
 using namespace std;

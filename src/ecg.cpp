@@ -6,7 +6,7 @@
 // version 1.3:  Revised code to compute HR and RR statistics properly
 // version 1.4:  Revised code to compute minimums and maximums for QT, HR and RR, and QT Dispersion
 
-#include "stdafx.h"
+#include "lib/stdafx.h"
 #include "lib/lib.h"
 //#include </opt/wfdb/include/wfdb/wfdb.h>
 
