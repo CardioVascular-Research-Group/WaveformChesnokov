@@ -18,7 +18,9 @@
 	#include <iostream>
 	//#include <tchar.h>
 	#include <fstream>
-
+#include <string.h>
+#include <sstream>
+#include <wfdb/wfdb.h>
 	// TODO: reference additional headers your program requires here
 	//#include <windows.h>
 	#include <cstdlib>

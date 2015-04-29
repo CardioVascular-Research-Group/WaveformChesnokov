@@ -42,10 +42,10 @@ University Chemical Laboratory, Cambridge University, Lensfield Road, Cambridge,
 #include "stdafx.h"
 #include "WinNT.h"
 #include "lib.h"
-#include <string.h>
+//#include <string.h>
 #include <wchar.h>
 //#include "LIB.h"
-#include <wfdb/wfdb.h>
+//#include <wfdb/wfdb.h>
 
 
 

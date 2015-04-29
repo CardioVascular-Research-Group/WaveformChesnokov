@@ -8,6 +8,8 @@
 
 #include "lib/stdafx.h"
 #include "lib/lib.h"
+
+
 //#include </opt/wfdb/include/wfdb/wfdb.h>
 
 
@@ -15,9 +17,25 @@ void help();
 int runChesnokov(char *fltdir, char *physionetdatfile, char *outputfilepath, int leadNumber);
 class Signal signal;
 
+vector<string> &split(const string &s, char delim, vector<string> &elems) {
+    stringstream ss(s);
+    string item;
+    while (getline(ss, item, delim)) {
+        elems.push_back(item);
+    }
+    return elems;
+}
+
+
+vector<string> split(const string &s, char delim) {
+    vector<string> elems;
+    split(s, delim, elems);
+    return elems;
+}
+
 int main(int argc, char* argv[])
 {
-	printf("ecg main()\n argv[0]: %s, \n argv[1]: %s, \n argv[2]: %s, \n argv[3]: %s\n", argv[0], argv[1], argv[2], argv[3]);
+	printf("ecg main()\n argv[0]: %s  \n argv[1]: %s  \n argv[2]: %s  \n argv[3]: %s\n", argv[0], argv[1], argv[2], argv[3]);
 //***********************************************************
     if( argc < 4 ) {
         help();
@@ -30,7 +48,18 @@ int main(int argc, char* argv[])
             if( leadNumber < 0 ) leadNumber = 0;
         }
 
-        signal.PopulateSignal(argv[2]);
+        vector<string> datFileInfo = split(argv[2],'/');
+		string path = "";
+		for (unsigned int i = 1; i < datFileInfo.size()-1; ++i) {
+			path.append("/" + datFileInfo[i]);
+		}
+		char *charPath = new char[path.length() + 1];
+		strcpy(charPath, path.c_str());
+		setwfdb(charPath);
+		char *datFileName = new char[datFileInfo[datFileInfo.size()-1].length()+ 1];
+		strcpy(datFileName, datFileInfo[datFileInfo.size()-1].c_str());
+		signal.PopulateSignal(datFileName);
+//        signal.PopulateSignal(argv[2]);
         runChesnokov(argv[1],argv[2],argv[3],leadNumber); //<filters dir> , physionetfile.dat, <output filepath>, leadnum
     }
 }
@@ -248,10 +277,10 @@ void help()
     printf( "\n-------------------------\n"
     		"usage: ecg.exe <filters dir> physionetfile.dat <output filepath> leadnum\n"
     		"filters dir - directory containing the filter files\n"
-    		"physionetfile.dat - data file of the record,\n"
-    		"   must be in the local directory, \n"
-    		"   or the directory in the environment variable WFDB,\n"
-    		"   or the variable DEFWFDB (defined in /opt/wfdb/include/wfdb/wfdblib.h)\n"
+    		"physionetfile.dat - full path/filename of the .hea file of the record,\n"
+    		"   (May also be full path/recordName, \n"
+//    		"   or the directory in the environment variable WFDB,\n"
+//    		"   or the variable DEFWFDB (defined in /opt/wfdb/include/wfdb/wfdblib.h)\n"
     		"leadnum - which lead to analyze, zero to analyze all available.\n"
     		"Do not forget the filters directory must be present.\n" );
 }
