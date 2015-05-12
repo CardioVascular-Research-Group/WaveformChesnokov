@@ -80,9 +80,9 @@ Signal::~Signal()
  * name - name of a file(record) to be found in the WFDB path e.g. "/opt/wfdb-/database", (or the current directory?)
  * returns sample count;
  */
-int  Signal::PopulateSignal(char *name)
+int  Signal::PopulateSignal(char *name, bool verbose)
 {
-	printf("PopulateSignal(%s)\n", name);
+	if(verbose) { printf("PopulateSignal(%s)\n", name); }
 	/* WFDB sample where signal count is not known */
 	int sample=0;
 	int sig, nsig;
@@ -101,9 +101,9 @@ int  Signal::PopulateSignal(char *name)
 	freq = getifreq();
 
 	// Print signal info
-	printf("File:\t\t\tDesc\tSamples\tRes\tGain\n");
+	if(verbose) {printf("File:\t\t\tDesc\tSamples\tRes\tGain\n");}
 	for (sig = 0; sig < nsig; sig++){
-		printf("%d)%s\t%s\t%ld\t%d\t%g\t%d\n",sig, siarray[sig].fname, siarray[sig].desc, siarray[sig].nsamp, siarray[sig].adcres, siarray[sig].gain, siarray[sig].spf);
+		if(verbose) { printf("%d)%s\t%s\t%ld\t%d\t%g\t%d\n",sig, siarray[sig].fname, siarray[sig].desc, siarray[sig].nsamp, siarray[sig].adcres, siarray[sig].gain, siarray[sig].spf); }
 
 //		pDataheader->hdr='DATA';
 		pDataheader->size = siarray[sig].nsamp; // Number of samples
@@ -163,30 +163,30 @@ int  Signal::PopulateSignal(char *name)
 
 	//	 Print first 5 samples
 	for (int s = 0; s < 5; s++) {
-		printf("%d ms\t",s*(1000/(int)freq) );
+		if(verbose) { printf("%d ms\t",s*(1000/(int)freq) ); }
 		for (sig = 0; sig < nsig; sig++){
 			WFDB_Sample dum = vdata[sig][s];
-			printf("%d\t", dum );
+			if(verbose) { printf("%d\t", dum ); }
 		}
-		printf("\n");
+		if(verbose) { printf("\n"); }
 	}
 	wfdbquit();
 
 	return sample;
 }
 
-
-long double * Signal::ReadFile(char *name)
-{
-	cout << "Pretending to read WFDB input file..\n";
-	return 0;
-
-   wchar_t ustr[256]=L"";
-   for(int i=0; i<(int)strlen(name); i++)
-    mbtowc(ustr+i,name+i, MB_CUR_MAX);
-   return ReadFile(ustr);
-   /* */
-}
+//
+//long double * Signal::ReadFile(char *name)
+//{
+//	cout << "Pretending to read WFDB input file..\n";
+//	return 0;
+//
+//   wchar_t ustr[256]=L"";
+//   for(int i=0; i<(int)strlen(name); i++)
+//    mbtowc(ustr+i,name+i, MB_CUR_MAX);
+//   return ReadFile(ustr);
+//   /* */
+//}
 /*
 long double * Signal::ReadFile(wchar_t *name)
 {
@@ -636,7 +636,7 @@ int Signal::parseHdr(FILE *fh)
 
 bool Signal::SaveFile(char *name, long double *buff, PDATAHDR hdr)
 {
-	cout << "Signal::SaveFile(" << *name << "," << *buff << ", " << hdr << ")";
+//	cout << "Signal::SaveFile(" << *name << "," << *buff << ", " << hdr << ")";
 	return true;
 //
 //   wchar_t ustr[256]=L"";

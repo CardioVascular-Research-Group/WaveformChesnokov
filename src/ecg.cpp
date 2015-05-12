@@ -12,10 +12,10 @@
 
 //#include </opt/wfdb/include/wfdb/wfdb.h>
 
-
 void help();
 int runChesnokov(char *fltdir, char *physionetdatfile, char *outputfilepath, int leadNumber);
 class Signal signal;
+bool verbose;
 
 vector<string> &split(const string &s, char delim, vector<string> &elems) {
     stringstream ss(s);
@@ -35,7 +35,18 @@ vector<string> split(const string &s, char delim) {
 
 int main(int argc, char* argv[])
 {
-	printf("ecg main()\n argv[0]: %s  \n argv[1]: %s  \n argv[2]: %s  \n argv[3]: %s\n", argv[0], argv[1], argv[2], argv[3]);
+	verbose = false;
+	if(strcmp(argv[4], "verbose") == 0)
+	    		verbose = true;
+	if(verbose) {
+		printf("ecg main()    \n "
+			"argv[0]: %s  \n "
+			"argv[1]: %s  \n "
+			"argv[2]: %s  \n "
+			"argv[3]: %s  \n"
+			"argv[4]: %s  \n",
+			argv[0], argv[1], argv[2], argv[3], argv[4]);
+	}
 //***********************************************************
     if( argc < 4 ) {
         help();
@@ -58,8 +69,7 @@ int main(int argc, char* argv[])
 		setwfdb(charPath);
 		char *datFileName = new char[datFileInfo[datFileInfo.size()-1].length()+ 1];
 		strcpy(datFileName, datFileInfo[datFileInfo.size()-1].c_str());
-		signal.PopulateSignal(datFileName);
-//        signal.PopulateSignal(argv[2]);
+		signal.PopulateSignal(datFileName, verbose);
         runChesnokov(argv[1],argv[2],argv[3],leadNumber); //<filters dir> , physionetfile.dat, <output filepath>, leadnum
     }
 }
@@ -68,10 +78,10 @@ int runChesnokov(char *fltdir, char *physionetdatfile, char *outputfilepath, int
 	{
         if( signal.GetLeadsNum() != 0){ // pretending that the WFDB input file was read... // !signal.ReadFile( physionetdatfile )
 
-        	cout << "** Open outputfile: " << outputfilepath <<" **\n";
+//        	cout << "** Open outputfile: " << outputfilepath <<" **\n";
 			FILE *fp_output = fopen( outputfilepath, "wt" );
             int size = signal.GetLength();
-		    cout << "** GetSR() **\n";
+//		    cout << "** GetSR() **\n";
 
             double sr = signal.GetSR();
             int h,m,s,ms;
@@ -90,16 +100,16 @@ int runChesnokov(char *fltdir, char *physionetdatfile, char *outputfilepath, int
             fwprintf( fp_output,L"\t<Length>%02d:%02d:%02d.%03d</Length>\n", h,m,s,ms );
 
 			for( leadNumber = 0; leadNumber < signal.GetLeadsNum(); leadNumber++) {
-				printf("** Get signal data for lead:%d **\n", leadNumber );
+//				printf("** Get signal data for lead:%d **\n", leadNumber );
 				signal.GetData( leadNumber );
 				fwprintf( fp_output,L"\t<LeadResults id=\"%d\">\n", leadNumber + 1 );
 
-				printf("\tlead: %ls\n", leads[leadNumber] );
-	            printf("\tsamplingRate: %.2f\n", sr );
-	            printf("\tbits: %d\n", signal.GetBits() );
-				printf("\tumv: %d\n", signal.GetUmV() );
-				printf("\tsize: %d\n", size );
-				printf("\tduration: %02d:%02d:%02d.%03d\n", h,m,s,ms );
+//				printf("\tlead: %ls\n", leads[leadNumber] );
+//	            printf("\tsamplingRate: %.2f\n", sr );
+//	            printf("\tbits: %d\n", signal.GetBits() );
+//				printf("\tumv: %d\n", signal.GetUmV() );
+//				printf("\tsize: %d\n", size );
+//				printf("\tduration: %02d:%02d:%02d.%03d\n", h,m,s,ms );
 				long double* data = signal.GetData();
 	            
 				//annotation
@@ -112,7 +122,7 @@ int runChesnokov(char *fltdir, char *physionetdatfile, char *outputfilepath, int
 				// class Annotation ann( &hdr );
 
 
-				wprintf( L"\tgetting QRS complexes... \n" );
+				if(verbose) { printf( "\t%ls) getting QRS complexes... \n",  leads[leadNumber]); }
 				int** qrsAnn = ann.GetQRS( data, size, sr, fltdir );       //get QRS complexes
 
 				if( qrsAnn ) {
@@ -121,12 +131,12 @@ int runChesnokov(char *fltdir, char *physionetdatfile, char *outputfilepath, int
 					ann.GetECT( qrsAnn, ann.GetQRSnum(), sr );      //label Ectopic beats
 					fwprintf( fp_output,L"\t\t<EctopicBeatCount>%d</EctopicBeatCount>\n", ann.GetECTnum() );
 //					cout << "\tgetting P, T waves... \n";
-					printf("\tgetting P, T waves... \n" );
+					if(verbose) { printf("\tgetting P, T waves... \n" ); }
 					int annNum = 0;
 					int** ANN = ann.GetPTU( data, size, sr, fltdir, qrsAnn, ann.GetQRSnum() );   //find P,T waves
 					if(ANN) {
 						annNum = ann.GetANNnum();
-						printf("\t%d total annotations detected.\n\n", annNum );
+						if(verbose) { printf("\t%d total annotations detected.\n\n", annNum ); }
 					}
 					else {
 						ANN = qrsAnn;
@@ -261,7 +271,7 @@ int runChesnokov(char *fltdir, char *physionetdatfile, char *outputfilepath, int
 			}
 			fwprintf( fp_output,L"</autoQRSResults>\n");
 			fclose( fp_output );
-			cout << "output finished.\n";
+			if(verbose) { printf("output finished.\n"); }
         } else {
             wprintf( L"failed to read %s file.", physionetdatfile );
             exit(1);
@@ -275,13 +285,16 @@ int runChesnokov(char *fltdir, char *physionetdatfile, char *outputfilepath, int
 void help()
 {
     printf( "\n-------------------------\n"
-    		"usage: ecg.exe <filters dir> physionetfile.dat <output filepath> leadnum\n"
+    		"Chesnokov's AutoQRS algorithm, Linux version 1.01, May 8, 2015. created by Michael Shipway\n"
+    		"usage: ecg.exe <filters dir> physionetfile.dat <output filepath> leadnum \"verbose\"\n"
     		"filters dir - directory containing the filter files\n"
     		"physionetfile.dat - full path/filename of the .hea file of the record,\n"
-    		"   (May also be full path/recordName, \n"
+    		"                    (May also be full path/recordName) \n"
 //    		"   or the directory in the environment variable WFDB,\n"
 //    		"   or the variable DEFWFDB (defined in /opt/wfdb/include/wfdb/wfdblib.h)\n"
     		"leadnum - which lead to analyze, zero to analyze all available.\n"
-    		"Do not forget the filters directory must be present.\n" );
+    		"\"verbose\" - optional, if 4th parameter is the word \"verbose\", progress messages will be printed to console.\n"
+    		"Do not forget the filters directory must be present.\n"
+    		);
 }
 

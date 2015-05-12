@@ -101,7 +101,7 @@ class Signal
            Signal();
           ~Signal();
 
-           int PopulateSignal(char *name);
+           int PopulateSignal(char *name, bool verbose);
   long double *ReadFile(wchar_t *name);
   long double *ReadFile(char *name);
           bool SaveFile(wchar_t *name, long double *buff, PDATAHDR hdr);
