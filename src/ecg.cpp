@@ -13,7 +13,8 @@
 //#include </opt/wfdb/include/wfdb/wfdb.h>
 
 void help();
-int runChesnokov(char *fltdir, char *physionetdatfile, char *outputfilepath, int leadNumber);
+//int runChesnokov(char *fltdir, char *physionetdatfile, char *outputfilepath, int leadNumber);
+int runChesnokov(char *fltdir, char *physionetdatfile, char *outputfilepath);
 class Signal signal;
 bool verbose;
 
@@ -36,15 +37,19 @@ vector<string> split(const string &s, char delim) {
 int main(int argc, char* argv[])
 {
 	verbose = false;
-	if(strcmp(argv[4], "verbose") == 0)
-	    		verbose = true;
+	if(argc>4){ //any value for argv[4] works
+		verbose = true;
+	}
 	if(verbose) {
-		printf("ecg main()    \n "
-			"argv[0]: %s  \n "
-			"argv[1]: %s  \n "
-			"argv[2]: %s  \n "
-			"argv[3]: %s  \n"
-			"argv[4]: %s  \n",
+		printf("\n|---------------------------------------------------------------------------------------------|\n"
+			"| Chesnokov's AutoQRS algorithm, Linux version 1.03, May 13, 2015. created by Michael Shipway |\n"
+			"|---------------------------------------------------------------------------------------------|\n"
+			"ecg main()    \n "
+			"argv[0], <command>: %s  \n "
+			"argv[1], <filters dir>: %s  \n "
+			"argv[2], <physionetfile.dat>: %s  \n "
+			"argv[3], <output filepath>: %s  \n"
+			"argv[4], <verbose>: %s  \n",
 			argv[0], argv[1], argv[2], argv[3], argv[4]);
 	}
 //***********************************************************
@@ -70,208 +75,222 @@ int main(int argc, char* argv[])
 		char *datFileName = new char[datFileInfo[datFileInfo.size()-1].length()+ 1];
 		strcpy(datFileName, datFileInfo[datFileInfo.size()-1].c_str());
 		signal.PopulateSignal(datFileName, verbose);
-        runChesnokov(argv[1],argv[2],argv[3],leadNumber); //<filters dir> , physionetfile.dat, <output filepath>, leadnum
+//        runChesnokov(argv[1],argv[2],argv[3],leadNumber); //<filters dir> , physionetfile.dat, <output filepath>, leadnum
+        runChesnokov(argv[1],argv[2],argv[3]); //<filters dir> , physionetfile.dat, <output filepath>, leadnum
     }
 }
 
-int runChesnokov(char *fltdir, char *physionetdatfile, char *outputfilepath, int leadNumber){
+//int runChesnokov(char *fltdir, char *physionetdatfile, char *outputfilepath, int leadNumber){
+int runChesnokov(char *fltdir, char *physionetdatfile, char *outputfilepath){
 	{
-        if( signal.GetLeadsNum() != 0){ // pretending that the WFDB input file was read... // !signal.ReadFile( physionetdatfile )
+        if( signal.GetLeadsNum() != 0){
+        	if(signal.GetLength()*(1000/(int)signal.GetSR()) > 1000){ // must be greater than 1 second duration
+				int leadNumber=0;
+				int annTotalCount = 0;
+	//        	cout << "** Open outputfile: " << outputfilepath <<" **\n";
+				FILE *fp_output = fopen( outputfilepath, "wt" );
+				int size = signal.GetLength();
+	//		    cout << "** GetSR() **\n";
 
-//        	cout << "** Open outputfile: " << outputfilepath <<" **\n";
-			FILE *fp_output = fopen( outputfilepath, "wt" );
-            int size = signal.GetLength();
-//		    cout << "** GetSR() **\n";
+				double sr = signal.GetSR();
+				int h,m,s,ms;
+				int msec = int( ((long double)size/sr) * 1000.0 );
+				signal.mSecToTime(msec,h,m,s,ms);
+	//		    char leads[18][6] =  {"I","II","III","aVR","aVL","aVF","v1","v2","v3","v4","v5","v6","MLI","MLII","MLIII","vX","vY","vZ"};
+				wchar_t leads[18][6] =  {L"I",L"II",L"III",L"aVR",L"aVL",L"aVF",L"v1",L"v2",L"v3",L"v4",L"v5",L"v6",L"MLI",L"MLII",L"MLIII",L"vX",L"vY",L"vZ"};
 
-            double sr = signal.GetSR();
-            int h,m,s,ms;
-            int msec = int( ((long double)size/sr) * 1000.0 );
-            signal.mSecToTime(msec,h,m,s,ms);
-//		    char leads[18][6] =  {"I","II","III","aVR","aVL","aVF","v1","v2","v3","v4","v5","v6","MLI","MLII","MLIII","vX","vY","vZ"};
-		    wchar_t leads[18][6] =  {L"I",L"II",L"III",L"aVR",L"aVL",L"aVF",L"v1",L"v2",L"v3",L"v4",L"v5",L"v6",L"MLI",L"MLII",L"MLIII",L"vX",L"vY",L"vZ"};
+				fwprintf( fp_output,L"<?xml version = \"1.0\" encoding = \"UTF-8\"?>\n");
+				fwprintf( fp_output,L"<autoQRSResults xmlns=\"http://www.cvrg.org/1/AutoQRSService\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://www.cvrg.org/1/AutoQRSService\">\n");
+				fwprintf( fp_output,L"\t<jobIdentifier/>\n");
+				fwprintf( fp_output,L"\t<FileAnalyzed>%s</FileAnalyzed>\n", physionetdatfile);
+				fwprintf( fp_output,L"\t<LeadCount>%d</LeadCount>\n", signal.GetLeadsNum() );
+				fwprintf( fp_output,L"\t<SR>%.2f</SR>\n", sr );
+				fwprintf( fp_output,L"\t<UmV>%d</UmV>\n", signal.GetUmV() );
+				fwprintf( fp_output,L"\t<Length>%02d:%02d:%02d.%03d</Length>\n", h,m,s,ms );
 
-			fwprintf( fp_output,L"<?xml version = \"1.0\" encoding = \"UTF-8\"?>\n");
-			fwprintf( fp_output,L"<autoQRSResults xmlns=\"http://www.cvrg.org/1/AutoQRSService\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:schemaLocation=\"http://www.cvrg.org/1/AutoQRSService\">\n");
-			fwprintf( fp_output,L"\t<jobIdentifier/>\n");
-			fwprintf( fp_output,L"\t<FileAnalyzed>%s</FileAnalyzed>\n", physionetdatfile);
-            fwprintf( fp_output,L"\t<LeadCount>%d</LeadCount>\n", signal.GetLeadsNum() );
-            fwprintf( fp_output,L"\t<SR>%.2f</SR>\n", sr );
-            fwprintf( fp_output,L"\t<UmV>%d</UmV>\n", signal.GetUmV() );
-            fwprintf( fp_output,L"\t<Length>%02d:%02d:%02d.%03d</Length>\n", h,m,s,ms );
+				for( leadNumber = 0; leadNumber < signal.GetLeadsNum(); leadNumber++) {
+	//				printf("** Get signal data for lead:%d **\n", leadNumber );
+					signal.GetData( leadNumber );
 
-			for( leadNumber = 0; leadNumber < signal.GetLeadsNum(); leadNumber++) {
-//				printf("** Get signal data for lead:%d **\n", leadNumber );
-				signal.GetData( leadNumber );
-				fwprintf( fp_output,L"\t<LeadResults id=\"%d\">\n", leadNumber + 1 );
-
-//				printf("\tlead: %ls\n", leads[leadNumber] );
-//	            printf("\tsamplingRate: %.2f\n", sr );
-//	            printf("\tbits: %d\n", signal.GetBits() );
-//				printf("\tumv: %d\n", signal.GetUmV() );
-//				printf("\tsize: %d\n", size );
-//				printf("\tduration: %02d:%02d:%02d.%03d\n", h,m,s,ms );
-				long double* data = signal.GetData();
-	            
-				//annotation
-				class Annotation ann;  //default annotation params
-
-				//or add your custom ECG params to annotation class from lib.h
-				// ANNHDR hdr;
-				//  hdr.minbpm = 30;
-				//  etc...
-				// class Annotation ann( &hdr );
-
-
-				if(verbose) { printf( "\t%ls) getting QRS complexes... \n",  leads[leadNumber]); }
-				int** qrsAnn = ann.GetQRS( data, size, sr, fltdir );       //get QRS complexes
-
-				if( qrsAnn ) {
-					fwprintf( fp_output,L"\t\t<Lead>%ls</Lead>\n", leads[leadNumber] );
-					fwprintf( fp_output,L"\t\t<TotalBeatCount>%d</TotalBeatCount>\n", ann.GetQRSnum() );
-					ann.GetECT( qrsAnn, ann.GetQRSnum(), sr );      //label Ectopic beats
-					fwprintf( fp_output,L"\t\t<EctopicBeatCount>%d</EctopicBeatCount>\n", ann.GetECTnum() );
-//					cout << "\tgetting P, T waves... \n";
-					if(verbose) { printf("\tgetting P, T waves... \n" ); }
-					int annNum = 0;
-					int** ANN = ann.GetPTU( data, size, sr, fltdir, qrsAnn, ann.GetQRSnum() );   //find P,T waves
-					if(ANN) {
-						annNum = ann.GetANNnum();
-						if(verbose) { printf("\t%d total annotations detected.\n\n", annNum ); }
-					}
-					else {
-						ANN = qrsAnn;
-						annNum = 2 * ann.GetQRSnum();
-						printf("\tfailed.\n" );
+					if(verbose) {
+						printf("\tlead: %ls\n", leads[leadNumber] );
+						printf("\tsamplingRate: %.2f\n", sr );
+						printf("\tbits: %d\n", signal.GetBits() );
+						printf("\tumv: %d\n", signal.GetUmV() );
+						printf("\tsize: %d\n", size );
+						printf("\tduration: %02d:%02d:%02d.%03d\n", h,m,s,ms );
 					}
 
-					char anncodes [51][10] =  {"notQRS", "N",       "LBBB",    "RBBB",     "ABERR", "PVC",
-								"FUSION", "NPC",     "APC",     "SVPB",     "VESC",  "NESC",
-								"PACE",   "UNKNOWN", "NOISE",   "q",        "ARFCT", "Q",
-								"STCH",   "TCH",     "SYSTOLE", "DIASTOLE", "NOTE",  "MEASURE",
-								"P",      "BBB",     "PACESP",  "T",        "RTM",   "U",
-								"LEARN",  "FLWAV",   "VFON",    "VFOFF",    "AESC",  "SVESC",
-								"LINK",   "NAPC",    "PFUSE",   "(",        ")",     "RONT",
+					long double* data = signal.GetData();
 
-		//user defined beats//
-								"(p",     "p)",      "(t",      "t)",       "ECT",
-								"r",      "R",       "s",       "S"};
+					//annotation
+					class Annotation ann;  //default annotation params
 
-					//printing out annotation
-					/*
-					for( int i = 0; i < annNum; i++ ) {
-						int smpl = ANN[i][0];
-						int type = ANN[i][1];
+					//or add your custom ECG params to annotation class from lib.h
+					// ANNHDR hdr;
+					//  hdr.minbpm = 30;
+					//  etc...
+					// class Annotation ann( &hdr );
 
-						msec = int( ((long double)smpl/sr) * 1000.0 );
-						signal.mSecToTime(msec,h,m,s,ms);
-						//fwprintf( fp_output,L"  %02d:%02d:%02d.%03d   %s\n", h,m,s,ms, anncodes[type] );
-					}
-					*/
-					//saving RR seq
-					vector<long double> rrs;
-					vector<int> rrsPos;
-					vector<long double> qts;
-					vector<int> qtsPos;
-					double meanRR = 0.0, meanQT = 0.0, QTc = 0.0;
-					double minQT = 10000000000.0, maxQT = 0.0, minRR = 10000000000.0, maxRR = 0.0;
-					double minHR = 10000000000.0, maxHR = 0.0;
-					double varRR = 0.0, sdRR = 0.0, varQT = 0.0, sdQT = 0.0;
-					double meanHR = 0.0, sdHR = 0.0, varHR = 0.0;
-					//double dNaN = std::numeric_limits<double>::quiet_NaN();
+					fwprintf( fp_output,L"\t<LeadResults id=\"%d\">\n", leadNumber + 1 );
 
-					if( ann.GetRRseq( ANN, annNum, sr, &rrs, &rrsPos) ) {
+	//				if(verbose) { printf( "\t%ls) getting QRS complexes... \n",  leads[leadNumber]); }
+					if(verbose) { printf( "\tgetting QRS complexes... \n"); }
+					int** qrsAnn = ann.GetQRS( data, size, sr, fltdir );       //get QRS complexes
+
+					if( qrsAnn ) {
+						fwprintf( fp_output,L"\t\t<Lead>%ls</Lead>\n", leads[leadNumber] );
+						fwprintf( fp_output,L"\t\t<TotalBeatCount>%d</TotalBeatCount>\n", ann.GetQRSnum() );
+						ann.GetECT( qrsAnn, ann.GetQRSnum(), sr );      //label Ectopic beats
+						fwprintf( fp_output,L"\t\t<EctopicBeatCount>%d</EctopicBeatCount>\n", ann.GetECTnum() );
+	//					cout << "\tgetting P, T waves... \n";
+						if(verbose) { printf("\tgetting P, T waves... \n" ); }
+						int annNum = 0;
+						int** ANN = ann.GetPTU( data, size, sr, fltdir, qrsAnn, ann.GetQRSnum() );   //find P,T waves
+						if(ANN) {
+							annNum = ann.GetANNnum();
+							if(verbose) { printf("\t%d annotations detected.\n\n", annNum ); }
+						}
+						else {
+							ANN = qrsAnn;
+							annNum = 2 * ann.GetQRSnum();
+							printf("\tP, T waves detection failed.\n" );
+						}
+						annTotalCount += annNum;
+
+						char anncodes [51][10] =  {"notQRS", "N",       "LBBB",    "RBBB",     "ABERR", "PVC",
+									"FUSION", "NPC",     "APC",     "SVPB",     "VESC",  "NESC",
+									"PACE",   "UNKNOWN", "NOISE",   "q",        "ARFCT", "Q",
+									"STCH",   "TCH",     "SYSTOLE", "DIASTOLE", "NOTE",  "MEASURE",
+									"P",      "BBB",     "PACESP",  "T",        "RTM",   "U",
+									"LEARN",  "FLWAV",   "VFON",    "VFOFF",    "AESC",  "SVESC",
+									"LINK",   "NAPC",    "PFUSE",   "(",        ")",     "RONT",
+
+			//user defined beats//
+									"(p",     "p)",      "(t",      "t)",       "ECT",
+									"r",      "R",       "s",       "S"};
+
+						//printing out annotation
+						/*
+						for( int i = 0; i < annNum; i++ ) {
+							int smpl = ANN[i][0];
+							int type = ANN[i][1];
+
+							msec = int( ((long double)smpl/sr) * 1000.0 );
+							signal.mSecToTime(msec,h,m,s,ms);
+							//fwprintf( fp_output,L"  %02d:%02d:%02d.%03d   %s\n", h,m,s,ms, anncodes[type] );
+						}
+						*/
+						//saving RR seq
+						vector<long double> rrs;
+						vector<int> rrsPos;
+						vector<long double> qts;
+						vector<int> qtsPos;
+						double meanRR = 0.0, meanQT = 0.0, QTc = 0.0;
+						double minQT = 10000000000.0, maxQT = 0.0, minRR = 10000000000.0, maxRR = 0.0;
+						double minHR = 10000000000.0, maxHR = 0.0;
+						double varRR = 0.0, sdRR = 0.0, varQT = 0.0, sdQT = 0.0;
+						double meanHR = 0.0, sdHR = 0.0, varHR = 0.0;
+						//double dNaN = std::numeric_limits<double>::quiet_NaN();
+
+						if( ann.GetRRseq( ANN, annNum, sr, &rrs, &rrsPos) ) {
+							for( int i = 0; i < (int)rrs.size(); i++ ) {
+								meanHR = meanHR + rrs[i];
+								if( rrs[i] > maxHR) maxHR = rrs[i];
+								if( rrs[i] < minHR) minHR = rrs[i];
+								meanRR = meanRR + 60000/rrs[i];
+							}
+							maxRR = 60000/minHR;
+							minRR = 60000/maxHR;
+							//fclose( fp );
+						}
+					//	ann.GetRRseq( ANN, annNum, sr, &rrs, &rrsPos);
+						meanRR = meanRR / rrs.size();
+
 						for( int i = 0; i < (int)rrs.size(); i++ ) {
-							meanHR = meanHR + rrs[i];
-							if( rrs[i] > maxHR) maxHR = rrs[i];
-							if( rrs[i] < minHR) minHR = rrs[i];
-							meanRR = meanRR + 60000/rrs[i];
+							varHR = varHR + (rrs[i] - meanHR) * (rrs[i] - meanHR);
+							varRR = varRR + (((sr * (60/rrs[i])) - meanRR) * ((sr * (60/rrs[i])) - meanRR));
 						}
-						maxRR = 60000/minHR;
-						minRR = 60000/maxHR;
-						//fclose( fp );
-					}
-				//	ann.GetRRseq( ANN, annNum, sr, &rrs, &rrsPos);
-					meanRR = meanRR / rrs.size();
+						varRR = varRR / (rrs.size() - 1);
+						varHR = varHR / (rrs.size() - 1);
+						sdRR = sqrt(varRR);
+						sdHR = sqrt(varHR);
 
-					for( int i = 0; i < (int)rrs.size(); i++ ) {
-						varHR = varHR + (rrs[i] - meanHR) * (rrs[i] - meanHR);
-						varRR = varRR + (((sr * (60/rrs[i])) - meanRR) * ((sr * (60/rrs[i])) - meanRR));
-					}
-					varRR = varRR / (rrs.size() - 1);
-					varHR = varHR / (rrs.size() - 1);
-					sdRR = sqrt(varRR);
-					sdHR = sqrt(varHR);
+						if( ann.GetQTseq( ANN, annNum, sr, &qts, &qtsPos) ) {
+							//FILE *fp = _wfopen( L"qts.txt", L"wt" );
+							for( int i = 0; i < (int)qts.size(); i++ ) {
+								//fwprintf( fp, L"%Lf\n", qts[i] );
+								meanQT = meanQT + qts[i];
+								if( qts[i] > maxQT) maxQT = qts[i];
+								if( qts[i] < minQT) minQT = qts[i];
 
-					if( ann.GetQTseq( ANN, annNum, sr, &qts, &qtsPos) ) {
-						//FILE *fp = _wfopen( L"qts.txt", L"wt" );
-						for( int i = 0; i < (int)qts.size(); i++ ) {
-							//fwprintf( fp, L"%Lf\n", qts[i] );
-							meanQT = meanQT + qts[i];
-							if( qts[i] > maxQT) maxQT = qts[i];
-							if( qts[i] < minQT) minQT = qts[i];
-
+							}
+							//fclose( fp );
 						}
-						//fclose( fp );
-					}
-					ann.GetQTseq( ANN, annNum, sr, &qts, &qtsPos);
-					meanQT = meanQT / qts.size();
-					for( int i = 0; i < (int)qts.size(); i++ ) 
-						varQT = varQT + (qts[i] - meanQT) * (qts[i] - meanQT);
-					varQT = varQT / (qts.size() - 1);
-					sdQT = sqrt(varQT);
+						ann.GetQTseq( ANN, annNum, sr, &qts, &qtsPos);
+						meanQT = meanQT / qts.size();
+						for( int i = 0; i < (int)qts.size(); i++ )
+							varQT = varQT + (qts[i] - meanQT) * (qts[i] - meanQT);
+						varQT = varQT / (qts.size() - 1);
+						sdQT = sqrt(varQT);
 
-					if( (qts.size() < 1) || (rrs.size() < 1) ) {
-						fwprintf( fp_output,L"\t\t<QTCorrected_Bazett>NaN</QTCorrected_Bazett>\n");
-						fwprintf( fp_output,L"\t\t<QTVI_log>NaN</QTVI_log>\n");
-						fwprintf( fp_output,L"\t\t<QT_Dispersion>NaN</QT_Dispersion>\n");
-					} else {
-						fwprintf( fp_output,L"\t\t<QTCorrected_Bazett>%.5f</QTCorrected_Bazett>\n", (double)meanQT/sqrt(meanRR) );
-						fwprintf( fp_output,L"\t\t<QTVI_log>%.5f</QTVI_log>\n", log((varQT/(meanQT*meanQT))/(varHR/(meanHR*meanHR))) );
-						fwprintf( fp_output,L"\t\t<QT_Dispersion>%.5f</QT_Dispersion>\n", maxQT-minQT );
+						if( (qts.size() < 1) || (rrs.size() < 1) ) {
+							fwprintf( fp_output,L"\t\t<QTCorrected_Bazett>NaN</QTCorrected_Bazett>\n");
+							fwprintf( fp_output,L"\t\t<QTVI_log>NaN</QTVI_log>\n");
+							fwprintf( fp_output,L"\t\t<QT_Dispersion>NaN</QT_Dispersion>\n");
+						} else {
+							fwprintf( fp_output,L"\t\t<QTCorrected_Bazett>%.5f</QTCorrected_Bazett>\n", (double)meanQT/sqrt(meanRR) );
+							fwprintf( fp_output,L"\t\t<QTVI_log>%.5f</QTVI_log>\n", log((varQT/(meanQT*meanQT))/(varHR/(meanHR*meanHR))) );
+							fwprintf( fp_output,L"\t\t<QT_Dispersion>%.5f</QT_Dispersion>\n", maxQT-minQT );
+						}
+						fwprintf( fp_output,L"\t\t<RRIntervalResults>\n");
+						fwprintf( fp_output,L"\t\t\t<RRIntervalCount>%d</RRIntervalCount>\n", (int)rrs.size() );
+						if( rrs.size() < 1 ) {
+							fwprintf( fp_output,L"\t\t\t<RRMean>NaN</RRMean>\n");
+							fwprintf( fp_output,L"\t\t\t<RRMin>NaN</RRMin>\n");
+							fwprintf( fp_output,L"\t\t\t<RRMax>NaN</RRMax>\n");
+							fwprintf( fp_output,L"\t\t\t<RRVariance>NaN</RRVariance>\n");
+							fwprintf( fp_output,L"\t\t\t<RRStandardDeviation>NaN</RRStandardDeviation>\n");
+						} else {
+							fwprintf( fp_output,L"\t\t\t<RRMean>%.5f</RRMean>\n", meanRR );
+							fwprintf( fp_output,L"\t\t\t<RRMin>%.5f</RRMin>\n", minRR );
+							fwprintf( fp_output,L"\t\t\t<RRMax>%.5f</RRMax>\n", maxRR );
+							fwprintf( fp_output,L"\t\t\t<RRVariance>%.5f</RRVariance>\n", varRR );
+							fwprintf( fp_output,L"\t\t\t<RRStandardDeviation>%.5f</RRStandardDeviation>\n", sdRR );
+						}
+						fwprintf( fp_output,L"\t\t</RRIntervalResults>\n");
+						fwprintf( fp_output,L"\t\t<QTIntervalResults>\n");
+						fwprintf( fp_output,L"\t\t\t<QTIntervalCount>%d</QTIntervalCount>\n", (int)qts.size() );
+						if( qts.size() < 1 ) {
+							fwprintf( fp_output,L"\t\t\t<QTMean>NaN</QTMean>\n");
+							fwprintf( fp_output,L"\t\t\t<QTMin>NaN</QTMin>\n");
+							fwprintf( fp_output,L"\t\t\t<QTMax>NaN</QTMax>\n");
+							fwprintf( fp_output,L"\t\t\t<QTVariance>NaN</QTVariance>\n");
+							fwprintf( fp_output,L"\t\t\t<QTStandardDeviation>NaN</QTStandardDeviation>\n");
+						} else {
+							fwprintf( fp_output,L"\t\t\t<QTMean>%.5f</QTMean>\n", meanQT );
+							fwprintf( fp_output,L"\t\t\t<QTMin>%.5f</QTMin>\n", minQT );
+							fwprintf( fp_output,L"\t\t\t<QTMax>%.5f</QTMax>\n", maxQT );
+							fwprintf( fp_output,L"\t\t\t<QTVariance>%.5f</QTVariance>\n", varQT );
+							fwprintf( fp_output,L"\t\t\t<QTStandardDeviation>%.5f</QTStandardDeviation>\n", sdQT );
+						}
+						fwprintf( fp_output,L"\t\t</QTIntervalResults>\n");
+						fwprintf( fp_output,L"\t</LeadResults>\n");
+					} // if( qrsAnn )
+					else {
+						wprintf( L"could not get QRS complexes. make sure you have got \"filters\" directory in the ecg application dir." );
+						exit(1);
 					}
-					fwprintf( fp_output,L"\t\t<RRIntervalResults>\n");
-					fwprintf( fp_output,L"\t\t\t<RRIntervalCount>%d</RRIntervalCount>\n", (int)rrs.size() );
-					if( rrs.size() < 1 ) {
-						fwprintf( fp_output,L"\t\t\t<RRMean>NaN</RRMean>\n");
-						fwprintf( fp_output,L"\t\t\t<RRMin>NaN</RRMin>\n");
-						fwprintf( fp_output,L"\t\t\t<RRMax>NaN</RRMax>\n");
-						fwprintf( fp_output,L"\t\t\t<RRVariance>NaN</RRVariance>\n");
-						fwprintf( fp_output,L"\t\t\t<RRStandardDeviation>NaN</RRStandardDeviation>\n");
-					} else {
-						fwprintf( fp_output,L"\t\t\t<RRMean>%.5f</RRMean>\n", meanRR );
-						fwprintf( fp_output,L"\t\t\t<RRMin>%.5f</RRMin>\n", minRR );
-						fwprintf( fp_output,L"\t\t\t<RRMax>%.5f</RRMax>\n", maxRR );
-						fwprintf( fp_output,L"\t\t\t<RRVariance>%.5f</RRVariance>\n", varRR );
-						fwprintf( fp_output,L"\t\t\t<RRStandardDeviation>%.5f</RRStandardDeviation>\n", sdRR );
-					}
-					fwprintf( fp_output,L"\t\t</RRIntervalResults>\n");
-					fwprintf( fp_output,L"\t\t<QTIntervalResults>\n");
-					fwprintf( fp_output,L"\t\t\t<QTIntervalCount>%d</QTIntervalCount>\n", (int)qts.size() );
-					if( qts.size() < 1 ) {
-						fwprintf( fp_output,L"\t\t\t<QTMean>NaN</QTMean>\n");
-						fwprintf( fp_output,L"\t\t\t<QTMin>NaN</QTMin>\n");
-						fwprintf( fp_output,L"\t\t\t<QTMax>NaN</QTMax>\n");
-						fwprintf( fp_output,L"\t\t\t<QTVariance>NaN</QTVariance>\n");
-						fwprintf( fp_output,L"\t\t\t<QTStandardDeviation>NaN</QTStandardDeviation>\n");
-					} else {
-						fwprintf( fp_output,L"\t\t\t<QTMean>%.5f</QTMean>\n", meanQT );
-						fwprintf( fp_output,L"\t\t\t<QTMin>%.5f</QTMin>\n", minQT );
-						fwprintf( fp_output,L"\t\t\t<QTMax>%.5f</QTMax>\n", maxQT );
-						fwprintf( fp_output,L"\t\t\t<QTVariance>%.5f</QTVariance>\n", varQT );
-						fwprintf( fp_output,L"\t\t\t<QTStandardDeviation>%.5f</QTStandardDeviation>\n", sdQT );
-					}
-					fwprintf( fp_output,L"\t\t</QTIntervalResults>\n");
-					fwprintf( fp_output,L"\t</LeadResults>\n");
-
+				} // for( leadNumber...
+				fwprintf( fp_output,L"</autoQRSResults>\n");
+				fclose( fp_output );
+				if(verbose) {
+					printf("chesnokov output finished, %d total annotations detected, %d leads.\n\n", annTotalCount, signal.GetLeadsNum()  );
 				}
-				else {
-					wprintf( L"could not get QRS complexes. make sure you have got \"filters\" directory in the ecg application dir." );
-					exit(1);
-				}
+				printf("success");
+			}else{  // must be greater than 1 second duration
+				printf("Could not analyze %s, duration is less than 1 second (%d:%d:%d).", physionetdatfile, signal.GetH(),signal.GetM(), signal.GetS());
 			}
-			fwprintf( fp_output,L"</autoQRSResults>\n");
-			fclose( fp_output );
-			if(verbose) { printf("output finished.\n"); }
         } else {
             wprintf( L"failed to read %s file.", physionetdatfile );
             exit(1);
@@ -284,16 +303,20 @@ int runChesnokov(char *fltdir, char *physionetdatfile, char *outputfilepath, int
 
 void help()
 {
-    printf( "\n-------------------------\n"
-    		"Chesnokov's AutoQRS algorithm, Linux version 1.01, May 8, 2015. created by Michael Shipway\n"
-    		"usage: ecg.exe <filters dir> physionetfile.dat <output filepath> leadnum \"verbose\"\n"
-    		"filters dir - directory containing the filter files\n"
-    		"physionetfile.dat - full path/filename of the .hea file of the record,\n"
+    printf( "\n|---------------------------------------------------------------------------------------------|\n"
+    		"| Chesnokov's AutoQRS algorithm, Linux version 1.04, May 20, 2015. created by Michael Shipway |\n"
+    		"|---------------------------------------------------------------------------------------------|\n"
+    		"usage: \n"
+//    		"chesnokov <filters dir> <physionetfile.dat> <output filepath> <leadnum> <verbose>\n"
+    		"chesnokov <filters dir> <physionetfile.dat> <output filepath> [verbose]\n"
+    		"1) filters dir - directory containing the filter files\n"
+    		"2) physionetfile.dat - full path/filename of the .hea file of the record,\n"
     		"                    (May also be full path/recordName) \n"
 //    		"   or the directory in the environment variable WFDB,\n"
 //    		"   or the variable DEFWFDB (defined in /opt/wfdb/include/wfdb/wfdblib.h)\n"
-    		"leadnum - which lead to analyze, zero to analyze all available.\n"
-    		"\"verbose\" - optional, if 4th parameter is the word \"verbose\", progress messages will be printed to console.\n"
+//    		"3) leadnum - which lead to analyze, zero to analyze all available.\n"
+    		"3) output filepath - full path/filename of the XML output file.\n"
+    		"4) [verbose] - optional, if there is any 4th parameter, progress messages will be printed to console.\n"
     		"Do not forget the filters directory must be present.\n"
     		);
 }
