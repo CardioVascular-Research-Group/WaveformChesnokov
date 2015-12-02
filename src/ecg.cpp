@@ -5,6 +5,10 @@
 // version 1.2:  Added filters directory path to command line parameters and added computation of QTVI_log to output
 // version 1.3:  Revised code to compute HR and RR statistics properly
 // version 1.4:  Revised code to compute minimums and maximums for QT, HR and RR, and QT Dispersion
+// version 1.5:  Revised code to add bioportal URLs to tag the values
+// version 1.6:  Revised code to replace all sr values with 1000, as it is that value for Chesnokov computations, rather than the sampling rate
+// version 1.65: Revised code for clarity, converting sample-rate to msec or Heart Rate for all values before mean, variance and standard deviation are calculated.
+//               Added documentation and regrouped some variable declarations.
 
 #include "lib/stdafx.h"
 #include "lib/lib.h"
@@ -42,7 +46,8 @@ int main(int argc, char* argv[])
 	}
 	if(verbose) {
 		printf("\n|---------------------------------------------------------------------------------------------|\n"
-			"| Chesnokov's AutoQRS algorithm, Linux version 1.03, May 13, 2015. created by Michael Shipway |\n"
+			"| Chesnokov's AutoQRS algorithm, Linux version 1.3, May 13, 2015. created by Michael Shipway |\n"
+			"| Chesnokov's AutoQRS algorithm, Linux version 1.65x, December 2, 2015. modified by Stephen Granite |\n"
 			"|---------------------------------------------------------------------------------------------|\n"
 			"ecg main()    \n "
 			"argv[0], <command>: %s  \n "
@@ -75,28 +80,23 @@ int main(int argc, char* argv[])
 		char *datFileName = new char[datFileInfo[datFileInfo.size()-1].length()+ 1];
 		strcpy(datFileName, datFileInfo[datFileInfo.size()-1].c_str());
 		signal.PopulateSignal(datFileName, verbose);
-//        runChesnokov(argv[1],argv[2],argv[3],leadNumber); //<filters dir> , physionetfile.dat, <output filepath>, leadnum
         runChesnokov(argv[1],argv[2],argv[3]); //<filters dir> , physionetfile.dat, <output filepath>, leadnum
     }
 }
 
-//int runChesnokov(char *fltdir, char *physionetdatfile, char *outputfilepath, int leadNumber){
 int runChesnokov(char *fltdir, char *physionetdatfile, char *outputfilepath){
 	{
         if( signal.GetLeadsNum() != 0){
         	if(signal.GetLength()*(1000/(int)signal.GetSR()) > 1000){ // must be greater than 1 second duration
 				int leadNumber=0;
 				int annTotalCount = 0;
-	//        	cout << "** Open outputfile: " << outputfilepath <<" **\n";
 				FILE *fp_output = fopen( outputfilepath, "wt" );
 				int size = signal.GetLength();
-	//		    cout << "** GetSR() **\n";
 
 				double sr = signal.GetSR();
 				int h,m,s,ms;
 				int msec = int( ((long double)size/sr) * 1000.0 );
 				signal.mSecToTime(msec,h,m,s,ms);
-	//		    char leads[18][6] =  {"I","II","III","aVR","aVL","aVF","v1","v2","v3","v4","v5","v6","MLI","MLII","MLIII","vX","vY","vZ"};
 				wchar_t leads[18][6] =  {L"I",L"II",L"III",L"aVR",L"aVL",L"aVF",L"v1",L"v2",L"v3",L"v4",L"v5",L"v6",L"MLI",L"MLII",L"MLIII",L"vX",L"vY",L"vZ"};
 
 				fwprintf( fp_output,L"<?xml version = \"1.0\" encoding = \"UTF-8\"?>\n");
@@ -109,7 +109,6 @@ int runChesnokov(char *fltdir, char *physionetdatfile, char *outputfilepath){
 				fwprintf( fp_output,L"\t<Length>%02d:%02d:%02d.%03d</Length>\n", h,m,s,ms );
 
 				for( leadNumber = 0; leadNumber < signal.GetLeadsNum(); leadNumber++) {
-	//				printf("** Get signal data for lead:%d **\n", leadNumber );
 					signal.GetData( leadNumber );
 
 					if(verbose) {
@@ -134,16 +133,14 @@ int runChesnokov(char *fltdir, char *physionetdatfile, char *outputfilepath){
 
 					fwprintf( fp_output,L"\t<LeadResults id=\"%d\">\n", leadNumber + 1 );
 
-	//				if(verbose) { printf( "\t%ls) getting QRS complexes... \n",  leads[leadNumber]); }
 					if(verbose) { printf( "\tgetting QRS complexes... \n"); }
 					int** qrsAnn = ann.GetQRS( data, size, sr, fltdir );       //get QRS complexes
 
 					if( qrsAnn ) {
-						fwprintf( fp_output,L"\t\t<Lead>%ls</Lead>\n", leads[leadNumber] );
-						fwprintf( fp_output,L"\t\t<TotalBeatCount>%d</TotalBeatCount>\n", ann.GetQRSnum() );
+						fwprintf( fp_output,L"\t\t<Lead bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000000150\">%ls</Lead>\n", leads[leadNumber] );
+						fwprintf( fp_output,L"\t\t<TotalBeatCount bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001083\">%d</TotalBeatCount>\n", ann.GetQRSnum() );
 						ann.GetECT( qrsAnn, ann.GetQRSnum(), sr );      //label Ectopic beats
-						fwprintf( fp_output,L"\t\t<EctopicBeatCount>%d</EctopicBeatCount>\n", ann.GetECTnum() );
-	//					cout << "\tgetting P, T waves... \n";
+						fwprintf( fp_output,L"\t\t<EctopicBeatCount bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001084\">%d</EctopicBeatCount>\n", ann.GetECTnum() );
 						if(verbose) { printf("\tgetting P, T waves... \n" ); }
 						int annNum = 0;
 						int** ANN = ann.GetPTU( data, size, sr, fltdir, qrsAnn, ann.GetQRSnum() );   //find P,T waves
@@ -204,7 +201,6 @@ int runChesnokov(char *fltdir, char *physionetdatfile, char *outputfilepath){
 							minRR = 60000/maxHR;
 							//fclose( fp );
 						}
-					//	ann.GetRRseq( ANN, annNum, sr, &rrs, &rrsPos);
 						meanRR = meanRR / rrs.size();
 
 						for( int i = 0; i < (int)rrs.size(); i++ ) {
@@ -235,46 +231,62 @@ int runChesnokov(char *fltdir, char *physionetdatfile, char *outputfilepath){
 						sdQT = sqrt(varQT);
 
 						if( (qts.size() < 1) || (rrs.size() < 1) ) {
-							fwprintf( fp_output,L"\t\t<QTCorrected_Bazett>NaN</QTCorrected_Bazett>\n");
-							fwprintf( fp_output,L"\t\t<QTVI_log>NaN</QTVI_log>\n");
-							fwprintf( fp_output,L"\t\t<QT_Dispersion>NaN</QT_Dispersion>\n");
+							fwprintf( fp_output,L"\t\t<QTCorrected_Bazett bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000000701\">NaN</QTCorrected_Bazett>\n");
+							fwprintf( fp_output,L"\t\t<QTVI_log bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001070\">NaN</QTVI_log>\n");
+							fwprintf( fp_output,L"\t\t<QT_Dispersion bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001078\">NaN</QT_Dispersion>\n");
 						} else {
-							fwprintf( fp_output,L"\t\t<QTCorrected_Bazett>%.5f</QTCorrected_Bazett>\n", (double)meanQT/sqrt(meanRR) );
-							fwprintf( fp_output,L"\t\t<QTVI_log>%.5f</QTVI_log>\n", log((varQT/(meanQT*meanQT))/(varHR/(meanHR*meanHR))) );
-							fwprintf( fp_output,L"\t\t<QT_Dispersion>%.5f</QT_Dispersion>\n", maxQT-minQT );
+							fwprintf( fp_output,L"\t\t<QTCorrected_Bazett bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000000701\">%.5lf</QTCorrected_Bazett>\n", (double)meanQT/sqrt(meanRR/1000));
+							fwprintf( fp_output,L"\t\t<QTVI_log bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001070\">%.5lf</QTVI_log>\n", log((varQT/(meanQT*meanQT))/(varHR/(meanHR*meanHR))));
+							fwprintf( fp_output,L"\t\t<QT_Dispersion bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001078\">%.5lf</QT_Dispersion>\n", maxQT-minQT);
 						}
 						fwprintf( fp_output,L"\t\t<RRIntervalResults>\n");
-						fwprintf( fp_output,L"\t\t\t<RRIntervalCount>%d</RRIntervalCount>\n", (int)rrs.size() );
+						fwprintf( fp_output,L"\t\t\t<RRIntervalCount bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001086\">%d</RRIntervalCount>\n", (int)rrs.size() );
 						if( rrs.size() < 1 ) {
-							fwprintf( fp_output,L"\t\t\t<RRMean>NaN</RRMean>\n");
-							fwprintf( fp_output,L"\t\t\t<RRMin>NaN</RRMin>\n");
-							fwprintf( fp_output,L"\t\t\t<RRMax>NaN</RRMax>\n");
-							fwprintf( fp_output,L"\t\t\t<RRVariance>NaN</RRVariance>\n");
-							fwprintf( fp_output,L"\t\t\t<RRStandardDeviation>NaN</RRStandardDeviation>\n");
+							fwprintf( fp_output,L"\t\t\t<RRMean bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001086\">NaN</RRMean>\n");
+							fwprintf( fp_output,L"\t\t\t<RRMin bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001091\">NaN</RRMin>\n");
+							fwprintf( fp_output,L"\t\t\t<RRMax bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001090\">NaN</RRMax>\n");
+							fwprintf( fp_output,L"\t\t\t<RRVariance bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001094\">NaN</RRVariance>\n");
+							fwprintf( fp_output,L"\t\t\t<RRStandardDeviation bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001096\">NaN</RRStandardDeviation>\n");
 						} else {
-							fwprintf( fp_output,L"\t\t\t<RRMean>%.5f</RRMean>\n", meanRR );
-							fwprintf( fp_output,L"\t\t\t<RRMin>%.5f</RRMin>\n", minRR );
-							fwprintf( fp_output,L"\t\t\t<RRMax>%.5f</RRMax>\n", maxRR );
-							fwprintf( fp_output,L"\t\t\t<RRVariance>%.5f</RRVariance>\n", varRR );
-							fwprintf( fp_output,L"\t\t\t<RRStandardDeviation>%.5f</RRStandardDeviation>\n", sdRR );
+							fwprintf( fp_output,L"\t\t\t<RRMean bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001086\">%.5f</RRMean>\n", meanRR);
+							fwprintf( fp_output,L"\t\t\t<RRMin bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001091\">%.5f</RRMin>\n", minRR );
+							fwprintf( fp_output,L"\t\t\t<RRMax bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001090\">%.5f</RRMax>\n", maxRR );
+							fwprintf( fp_output,L"\t\t\t<RRVariance bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001094\">%.5f</RRVariance>\n", varRR );
+							fwprintf( fp_output,L"\t\t\t<RRStandardDeviation bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001096\">%.5f</RRStandardDeviation>\n", sdRR );
 						}
 						fwprintf( fp_output,L"\t\t</RRIntervalResults>\n");
 						fwprintf( fp_output,L"\t\t<QTIntervalResults>\n");
-						fwprintf( fp_output,L"\t\t\t<QTIntervalCount>%d</QTIntervalCount>\n", (int)qts.size() );
+						fwprintf( fp_output,L"\t\t\t<QTIntervalCount bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001085\">%d</QTIntervalCount>\n", (int)qts.size() );
 						if( qts.size() < 1 ) {
-							fwprintf( fp_output,L"\t\t\t<QTMean>NaN</QTMean>\n");
-							fwprintf( fp_output,L"\t\t\t<QTMin>NaN</QTMin>\n");
-							fwprintf( fp_output,L"\t\t\t<QTMax>NaN</QTMax>\n");
-							fwprintf( fp_output,L"\t\t\t<QTVariance>NaN</QTVariance>\n");
-							fwprintf( fp_output,L"\t\t\t<QTStandardDeviation>NaN</QTStandardDeviation>\n");
+							fwprintf( fp_output,L"\t\t\t<QTMean bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001089\">NaN</QTMean>\n");
+							fwprintf( fp_output,L"\t\t\t<QTMin bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001093\">NaN</QTMin>\n");
+							fwprintf( fp_output,L"\t\t\t<QTMax bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001092\">NaN</QTMax>\n");
+							fwprintf( fp_output,L"\t\t\t<QTVariance bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001095\">NaN</QTVariance>\n");
+							fwprintf( fp_output,L"\t\t\t<QTStandardDeviation bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001097\">NaN</QTStandardDeviation>\n");
 						} else {
-							fwprintf( fp_output,L"\t\t\t<QTMean>%.5f</QTMean>\n", meanQT );
-							fwprintf( fp_output,L"\t\t\t<QTMin>%.5f</QTMin>\n", minQT );
-							fwprintf( fp_output,L"\t\t\t<QTMax>%.5f</QTMax>\n", maxQT );
-							fwprintf( fp_output,L"\t\t\t<QTVariance>%.5f</QTVariance>\n", varQT );
-							fwprintf( fp_output,L"\t\t\t<QTStandardDeviation>%.5f</QTStandardDeviation>\n", sdQT );
+							fwprintf( fp_output,L"\t\t\t<QTMean bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001089\">%.5f</QTMean>\n", meanQT*1000 );
+							fwprintf( fp_output,L"\t\t\t<QTMin bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001093\">%.5f</QTMin>\n", minQT*1000 );
+							fwprintf( fp_output,L"\t\t\t<QTMax bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001092\">%.5f</QTMax>\n", maxQT*1000 );
+							fwprintf( fp_output,L"\t\t\t<QTVariance bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001095\">%.5f</QTVariance>\n", varQT*1000 );
+							fwprintf( fp_output,L"\t\t\t<QTStandardDeviation bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001097\">%.5f</QTStandardDeviation>\n", sdQT*1000 );
 						}
 						fwprintf( fp_output,L"\t\t</QTIntervalResults>\n");
+						fwprintf( fp_output,L"\t\t<HRIntervalResults>\n");
+						fwprintf( fp_output,L"\t\t\t<HRIntervalCount bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001103\">%d</HRIntervalCount>\n", (int)rrs.size() );
+						if( rrs.size() < 1 ) {
+							fwprintf( fp_output,L"\t\t\t<HRMean bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001099\">NaN</HRMean>\n");
+							fwprintf( fp_output,L"\t\t\t<HRMin bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001100\">NaN</HRMin>\n");
+							fwprintf( fp_output,L"\t\t\t<HRMax bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001098\">NaN</HRMax>\n");
+							fwprintf( fp_output,L"\t\t\t<HRVariance bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001101\">NaN</HRVariance>\n");
+							fwprintf( fp_output,L"\t\t\t<HRStandardDeviation bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001102\">NaN</HRStandardDeviation>\n");
+						} else {
+							fwprintf( fp_output,L"\t\t\t<HRMean bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001099\">%.5f</HRMean>\n", meanRR );
+							fwprintf( fp_output,L"\t\t\t<HRMin bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001100\">%.5f</HRMin>\n", minRR );
+							fwprintf( fp_output,L"\t\t\t<HRMax bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001098\">%.5f</HRMax>\n", maxRR );
+							fwprintf( fp_output,L"\t\t\t<HRVariance bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001101\">%.5f</HRVariance>\n", varRR );
+							fwprintf( fp_output,L"\t\t\t<HRStandardDeviation bioportalURL=\"http://purl.bioontology.org/ontology/ECGT/ECGTermsv1:ECG_000001102\">%.5f</HRStandardDeviation>\n", sdRR );
+						}
+						fwprintf( fp_output,L"\t\t</HRIntervalResults>\n");
 						fwprintf( fp_output,L"\t</LeadResults>\n");
 					} // if( qrsAnn )
 					else {
